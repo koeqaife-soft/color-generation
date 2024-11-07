@@ -1,3 +1,5 @@
+$default: #f30;
+
 primary: {s: =83, l: =61};
 on-primary: {s: =83, l: =99};
 

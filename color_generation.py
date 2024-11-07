@@ -37,7 +37,7 @@ class HSL:
 
     @staticmethod
     def from_hex(hex):
-        return HSL(*hex_to_hsl(hex))
+        return HSL(*hex_to_hsl(hex.strip()))
 
 
 def hex_to_hsl(hex_color: str) -> tuple[float, float, float]:
@@ -143,7 +143,9 @@ def is_number(string: str) -> bool:
     return re.match(regex["is_number"], string) is not None
 
 
-def parse_palette(string: str):
+def parse_palette(
+    string: str
+) -> tuple[dict[str, dict[str, str] | str], str]:
     parsed: dict[str, dict | str] = {}
 
     try:
@@ -373,9 +375,9 @@ class Compiler:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--file", "-F", type=str)
+    parser.add_argument("--file", "-F", type=str, required=True)
     parser.add_argument("--output", "-O", type=str, required=False)
-    group = parser.add_mutually_exclusive_group(required=True)
+    group = parser.add_mutually_exclusive_group(required=False)
     group.add_argument("--hex", "-H", type=str)
     group.add_argument("--compile", "-C", type=str, choices=["css", "scss"])
 
@@ -388,6 +390,12 @@ def main():
 
     with open(file) as f:
         parsed, format = parse_palette(f.read())
+
+    hex = hex or parsed.pop("$default", "").lstrip("color::")
+    if not hex:
+        raise ValueError(
+            "The default value is not set and the '-H' argument is not used"
+        )
 
     _output = ""
     if hex:

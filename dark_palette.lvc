@@ -1,11 +1,13 @@
+$default: #f30;
+
 primary: {s: =96, l: =80};
-on-primary: {s: =96, l: =15};
+on-primary: {s: =96, l: =10};
 
 secondary: {s: =90, l: =75};
-on-secondary: {s: =90, l: =15};
+on-secondary: {s: =90, l: =10};
 
 tertiary: {h: +15, s: =96, l: =80};
-on-tertiary: {h: +15, s: =96, l: =15};
+on-tertiary: {h: +15, s: =96, l: =10};
 
 background-color: {s: =7, l: =15};
 text: white;
