@@ -207,23 +207,99 @@ def format_generated(generated: dict[str, HSL], format: str):
     return result.strip()
 
 
+class Compiler:
+    @staticmethod
+    def to_css(parsed: dict[str, dict[str, str] | str]):
+        template = ":root {\n<here>\n}\n"
+        main_vars = "--lvc-hue: 0deg;\n--lvc-sat: 0%;\n--lvc-light: 0%;\n"
+
+        links: dict[str, str | dict] = {}
+        generated: dict[str, str] = {}
+        result: dict[str, str] = {}
+        for key, value in parsed.items():
+            if isinstance(value, str):
+                if value.startswith("link::"):
+                    links[key] = parsed[key]
+                elif value.startswith("color::"):
+                    name = value.lstrip("color::").strip()
+                    hex_color = name_to_hex(name)
+                    hsl = HSL(*hex_to_hsl(hex_color))
+                    hue = round(hsl.hue)
+                    saturation = round(hsl.saturation)
+                    lightness = round(hsl.lightness)
+                    generated[key] = (
+                        f"hsl({hue}deg, {saturation}%, {lightness}%)"
+                    )
+            elif isinstance(value, dict):
+                colors = {
+                    "+h": "calc(var(--lvc-hue) + {}deg)",
+                    "-h": "cal(var(--lvc-hue) - {}deg)",
+                    "+s": "calc(var(--lvc-sat) + {}%)",
+                    "-s": "cal(var(--lvc-sat) - {}%)",
+                    "+l": "calc(var(--lvc-light) + {}%)",
+                    "-l": "cal(var(--lvc-light) - {}%)",
+                    "=h": "{}deg",  "=s": "{}%", "=l": "{}%",
+                }
+                indexes = {"h": 0, "s": 1, "l": 2}
+                _parsed = [
+                    "var(--lvc-hue)", "var(--lvc-sat)", "var(--lvc-light)"
+                ]
+                for _key, _value in value.items():
+                    prefix, _name, __value = _value[0], _key, _value[1:]
+                    _parsed[indexes[_name]] = (
+                        colors[f"{prefix}{_name}"].format(__value)
+                    )
+                generated[key] = f"hsl({', '.join(_parsed)})"
+
+        for key, value in links.items():
+            if isinstance(value, str):
+                name = value.lstrip("link::")
+                generated[key] = f"var(--{name})"
+
+        for _key, _value in generated.items():
+            if not _key.startswith("$"):
+                result[_key] = _value
+
+        output = main_vars
+
+        for _key, _value in generated.items():
+            output += f"--{_key}: {_value};\n"
+
+        return template.replace("<here>", output.strip()).strip()
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--file", "-F", type=str)
-    parser.add_argument("--hex", "-H", type=str)
+    parser.add_argument("--output", "-O", type=str, required=False)
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--hex", "-H", type=str)
+    group.add_argument("--compile", "-C", type=str, choices=["css"])
 
     args = parser.parse_args()
 
     file = args.file
+    output = args.output
     hex = args.hex
-
-    hsl = HSL(*hex_to_hsl(hex))
+    compile = args.compile
 
     with open(file) as f:
         parsed, format = parse_palette(f.read())
 
-    generated = generate_palette(hsl, parsed)
-    print(format_generated(generated, format))
+    _output = ""
+    if hex:
+        hsl = HSL(*hex_to_hsl(hex))
+        generated = generate_palette(hsl, parsed)
+        _output = format_generated(generated, format)
+    elif compile:
+        func = getattr(Compiler(), f"to_{compile}")
+        _output = func(parsed)
+
+    if not output:
+        print(_output)
+    else:
+        with open(output, 'w') as f:
+            f.write(_output)
 
 
 if __name__ == "__main__":
