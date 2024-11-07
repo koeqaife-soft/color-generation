@@ -129,6 +129,14 @@ def strip_whitespace(text: str) -> str:
     return text.strip(" ").strip("\n").strip("\t")
 
 
+def is_number(string: str) -> bool:
+    try:
+        float(string)
+        return True
+    except ValueError:
+        return False
+
+
 def parse_palette(string: str):
     parsed: dict[str, dict | str] = {}
 
@@ -137,8 +145,8 @@ def parse_palette(string: str):
     except ValueError:
         raise ValueError("Invalid palette format. Expected '>>>'.")
 
+    code = re.sub(r'\/\/.*', '', code, re.MULTILINE).strip()
     code = remove_whitespace(code)
-    code = re.sub(r'//.*$', '', code, flags=re.MULTILINE)
 
     lines = code.split(";")
     for line in lines:
@@ -152,24 +160,50 @@ def parse_palette(string: str):
                 f"Invalid line format: '{line}'. Expected 'key: value'."
             )
 
+        var = var.strip()
+        value = value.strip()
+
         if value.startswith("{") and value.endswith("}"):
             inner_value = value[1:-1].split(",")
             parsed_dict = {}
             for x in inner_value:
+                x = x.strip()
                 try:
                     key, val = x.split(":")
-                    parsed_dict[key] = val
                 except ValueError:
                     raise ValueError(
-                        f"Invalid format in {x}, expected 'key:value'."
+                        f"Invalid format in '{x}', expected 'key: value'."
                     )
+                if not is_number(val[1:]):
+                    raise ValueError(
+                        f"The value '{val[1:]}' must be a number."
+                    )
+                key = key.strip()
+                val = val.strip()
+                parsed_dict[key] = val
+
+            if value.count("{") != value.count("}"):
+                raise ValueError(f"Unmatched curly braces in value: '{value}'")
+
             parsed[var] = parsed_dict
 
         elif value.startswith("=>"):
-            _inner_value = value.lstrip("=>")
+            _inner_value = value.lstrip("=>").strip()
+            if not re.match(r'^[a-zA-Z0-9\-_\$]+$', _inner_value):
+                raise ValueError(
+                    f"Invalid link format: '{_inner_value}'. Only alphanumeric"
+                    " characters, dashes, and underscores are allowed."
+                )
+            if _inner_value not in parsed:
+                raise ValueError(f"Variable '{_inner_value}' not found")
             parsed[var] = f"link::{_inner_value}"
 
         else:
+            if not re.match(r'^[#a-zA-Z0-9]+$', value):
+                raise ValueError(
+                    f"Invalid color format: '{value}'. Only hex codes and "
+                    "alphanumeric colors are allowed."
+                )
             parsed[var] = f"color::{value}"
 
     return parsed, format.lstrip(">>>").strip()
@@ -193,9 +227,11 @@ def format_generated(generated: dict[str, HSL], format: str):
 
         for i, (key, value) in enumerate(items):
             hex = hsl_to_hex(*value.tuple())
+            hsl_css = f"{value.hue}deg,{value.saturation}%,{value.lightness}%"
             _for += format_for.format(
                 key=key,
                 hsl=value.str(),
+                hsl_css=hsl_css,
                 hex=hex,
                 strip_hex=hex.strip(),
                 newline="\n" if i < len(items) - 1 else "",
