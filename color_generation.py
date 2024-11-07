@@ -6,6 +6,20 @@ import argparse
 import re
 
 
+regex = {
+    "whitespace": re.compile(r'[ \n\t]'),
+    "strip_whitespace": re.compile(r'^[ \n\t]+|[ \n\t]+$'),
+    "is_number": re.compile(r'^-?\d+(\.\d+)?$'),
+    "color_action": re.compile(r'([=+-])(\d+(\.\d+)?)'),
+    "match_color": re.compile(r'color::(\w+)'),
+    "comments": re.compile(r'\/\/.*', re.MULTILINE),
+    "brackets": re.compile(r'^\{.+\}$'),
+    "link": re.compile(r'^=>[a-zA-Z0-9\-_\$]+$'),
+    "color": re.compile(r'^[#a-zA-Z0-9]+$'),
+    "template_for": re.compile(r'for\s*\((.*?)\)', re.DOTALL)
+}
+
+
 @dataclass
 class HSL:
     hue: float
@@ -58,62 +72,57 @@ def adjust_hue(hue: float, value: float) -> float:
 
 
 def color_action(func, original: float, parameter: str) -> float:
-    if parameter.startswith("="):
-        return float(parameter.lstrip("="))
-    elif parameter.startswith("+"):
-        delta = float(parameter.lstrip("+"))
-        return func(original, delta)
-    elif parameter.startswith("-"):
-        delta = float(parameter.lstrip("-"))
-        return func(original, -delta)
-    else:
+    match = re.match(regex["color_action"], parameter)
+    if not match:
         raise ValueError("Couldn't understand parameter")
 
+    operation, value = match.groups()[0], float(match.groups()[1])
+    if operation == '=':
+        return value
+    elif operation == '+':
+        return func(original, value)
+    elif operation == '-':
+        return func(original, -value)
+    else:
+        return original
 
-def generate_color(
-    hsl: HSL,
-    parameters: dict | str
-) -> HSL:
-    hue = hsl.hue
-    saturation = hsl.saturation
-    lightness = hsl.lightness
-    if isinstance(parameters, str):
-        if parameters.startswith("color::"):
-            name = parameters.lstrip("color::").strip()
-            hex_color = name_to_hex(name)
+
+def generate_color(hsl: HSL, params: dict | str) -> HSL:
+    hue, saturation, lightness = hsl.hue, hsl.saturation, hsl.lightness
+
+    if isinstance(params, str):
+        match = re.match(regex["match_color"], params)
+        if match:
+            hex_color = name_to_hex(match.group(1))
             return HSL.from_hex(hex_color)
-        else:
-            raise ValueError("Couldn't understand parameter")
-    elif isinstance(parameters, dict):
-        if "h" in parameters:
-            hue = color_action(adjust_hue, hue, parameters["h"])
-        if "s" in parameters:
-            saturation = color_action(
-                adjust_value, saturation, parameters["s"]
-            )
-        if "l" in parameters:
-            lightness = color_action(
-                adjust_value, lightness, parameters["l"]
-            )
+        raise ValueError("Couldn't understand parameter")
+
+    elif isinstance(params, dict):
+        if "h" in params:
+            hue = color_action(adjust_hue, hue, params["h"])
+        if "s" in params:
+            saturation = color_action(adjust_value, saturation, params["s"])
+        if "l" in params:
+            lightness = color_action(adjust_value, lightness, params["l"])
 
     return HSL(hue, saturation, lightness)
 
 
 def generate_palette(color: HSL, palette: dict[str, str | dict]):
-    links: dict[str, str | dict] = {}
+    links: dict[str, str] = {}
     generated: dict[str, HSL] = {}
     result: dict[str, HSL] = {}
     for key, value in palette.items():
         if isinstance(value, str) and value.startswith("link::"):
-            links[key] = palette[key]
+            __value = palette[key]
+            assert isinstance(__value, str)
+            links[key] = __value
             continue
-
         generated[key] = generate_color(color, value)
 
     for key, value in links.items():
-        if isinstance(value, str):
-            name = value.lstrip("link::")
-            generated[key] = generated[name]
+        name = value.lstrip("link::")
+        generated[key] = generated[name]
 
     for _key, _value in generated.items():
         if not _key.startswith("$"):
@@ -123,19 +132,15 @@ def generate_palette(color: HSL, palette: dict[str, str | dict]):
 
 
 def remove_whitespace(text: str) -> str:
-    return text.replace(" ", "").replace("\n", "").replace("\t", "")
+    return re.sub(regex["whitespace"], '', text)
 
 
 def strip_whitespace(text: str) -> str:
-    return text.strip(" ").strip("\n").strip("\t")
+    return re.sub(regex["strip_whitespace"], '', text)
 
 
 def is_number(string: str) -> bool:
-    try:
-        float(string)
-        return True
-    except ValueError:
-        return False
+    return re.match(regex["is_number"], string) is not None
 
 
 def parse_palette(string: str):
@@ -146,14 +151,10 @@ def parse_palette(string: str):
     except ValueError:
         raise ValueError("Invalid palette format. Expected '>>>'.")
 
-    code = re.sub(r'\/\/.*', '', code, re.MULTILINE).strip()
+    code = re.sub(regex["comments"], '', code).strip()
     code = remove_whitespace(code)
 
-    lines = code.split(";")
-    for line in lines:
-        if len(line.strip()) < 1:
-            continue
-
+    for line in filter(None, code.split(";")):
         try:
             var, value = line.split(":", 1)
         except ValueError:
@@ -161,16 +162,12 @@ def parse_palette(string: str):
                 f"Invalid line format: '{line}'. Expected 'key: value'."
             )
 
-        var = var.strip()
-        value = value.strip()
-
-        if value.startswith("{") and value.endswith("}"):
+        if re.match(regex["brackets"], value):
             inner_value = value[1:-1].split(",")
             parsed_dict = {}
             for x in inner_value:
-                x = x.strip()
                 try:
-                    key, val = x.split(":")
+                    key, val = x.strip().split(":")
                 except ValueError:
                     raise ValueError(
                         f"Invalid format in '{x}', expected 'key: value'."
@@ -179,33 +176,26 @@ def parse_palette(string: str):
                     raise ValueError(
                         f"The value '{val[1:]}' must be a number."
                     )
-                key = key.strip()
-                val = val.strip()
-                parsed_dict[key] = val
+                parsed_dict[key.strip()] = val.strip()
 
             if value.count("{") != value.count("}"):
                 raise ValueError(f"Unmatched curly braces in value: '{value}'")
 
-            parsed[var] = parsed_dict
+            parsed[var.strip()] = parsed_dict
 
-        elif value.startswith("=>"):
+        elif re.match(regex["link"], value):
             _inner_value = value.lstrip("=>").strip()
-            if not re.match(r'^[a-zA-Z0-9\-_\$]+$', _inner_value):
-                raise ValueError(
-                    f"Invalid link format: '{_inner_value}'. Only alphanumeric"
-                    " characters, dashes, and underscores are allowed."
-                )
             if _inner_value not in parsed:
                 raise ValueError(f"Variable '{_inner_value}' not found")
-            parsed[var] = f"link::{_inner_value}"
+            parsed[var.strip()] = f"link::{_inner_value}"
 
         else:
-            if not re.match(r'^[#a-zA-Z0-9]+$', value):
+            if not re.match(regex["color"], value):
                 raise ValueError(
                     f"Invalid color format: '{value}'. Only hex codes and "
                     "alphanumeric colors are allowed."
                 )
-            parsed[var] = f"color::{value}"
+            parsed[var.strip()] = f"color::{value.strip()}"
 
     return parsed, format.lstrip(">>>").strip()
 
@@ -215,7 +205,7 @@ def generate_whitespaces():
 
 
 def format_generated(generated: dict[str, HSL], format: str):
-    for_pattern = re.compile(r'for\s*\((.*?)\)', re.DOTALL)
+    for_pattern = regex["template_for"]
 
     result = format
     _for = ""
