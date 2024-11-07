@@ -392,13 +392,13 @@ def main():
         parsed, format = parse_palette(f.read())
 
     hex = hex or parsed.pop("$default", "").lstrip("color::")
-    if not hex:
+    if not hex and not compile:
         raise ValueError(
             "The default value is not set and the '-H' argument is not used"
         )
 
     _output = ""
-    if hex:
+    if hex and not compile:
         hsl = HSL.from_hex(hex)
         generated = generate_palette(hsl, parsed)
         _output = format_generated(generated, format)
