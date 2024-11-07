@@ -1,4 +1,5 @@
 import colorsys
+from copy import copy
 from dataclasses import dataclass
 from colors import name_to_hex
 import argparse
@@ -298,8 +299,8 @@ class Compiler:
                     hsl = HSL.from_hex(hex_color)
                     generated[key] = hsl_format.format_full(hsl)
             elif isinstance(value, dict):
-                colors = color_actions
-                _parsed = pre_conf
+                colors = copy(color_actions)
+                _parsed = copy(pre_conf)
                 for _key, _value in value.items():
                     prefix, _name, __value = _value[0], _key, _value[1:]
                     _parsed[indexes[_name]] = (
