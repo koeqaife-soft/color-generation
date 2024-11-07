@@ -26,6 +26,10 @@ class HSL:
 
 def hex_to_hsl(hex_color: str) -> tuple[float, float, float]:
     hex_color = hex_color.lstrip('#')
+
+    if len(hex_color) == 3:
+        hex_color = ''.join([c*2 for c in hex_color])
+
     r, g, b = tuple(int(hex_color[i:i+2], 16) / 255.0 for i in (0, 2, 4))
     h, li, s = colorsys.rgb_to_hls(r, g, b)
     return h * 360, s * 100, li * 100
