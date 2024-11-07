@@ -20,8 +20,9 @@ class HSL:
     def str(self):
         return f"{self.hue},{self.saturation},{self.lightness}"
 
-    def __str__(self):
-        return str(self.list())
+    @staticmethod
+    def from_hex(hex):
+        return HSL(*hex_to_hsl(hex))
 
 
 def hex_to_hsl(hex_color: str) -> tuple[float, float, float]:
@@ -70,8 +71,7 @@ def color_action(func, original: float, parameter: str) -> float:
 
 def generate_color(
     hsl: HSL,
-    parameters: dict | str,
-    color_palette: dict[str, HSL] | None = None
+    parameters: dict | str
 ) -> HSL:
     hue = hsl.hue
     saturation = hsl.saturation
@@ -80,13 +80,7 @@ def generate_color(
         if parameters.startswith("color::"):
             name = parameters.lstrip("color::").strip()
             hex_color = name_to_hex(name)
-            return HSL(*hex_to_hsl(hex_color))
-        elif parameters.startswith("link::") and color_palette:
-            name = parameters.lstrip("link::").strip()
-            color = color_palette.get(name)
-            if not color:
-                raise ValueError(f"Couldn't link color to {name}")
-            return color
+            return HSL.from_hex(hex_color)
         else:
             raise ValueError("Couldn't understand parameter")
     elif isinstance(parameters, dict):
@@ -113,10 +107,12 @@ def generate_palette(color: HSL, palette: dict[str, str | dict]):
             links[key] = palette[key]
             continue
 
-        generated[key] = generate_color(color, value, generated)
+        generated[key] = generate_color(color, value)
 
     for key, value in links.items():
-        generated[key] = generate_color(color, value, generated)
+        if isinstance(value, str):
+            name = value.lstrip("link::")
+            generated[key] = generated[name]
 
     for _key, _value in generated.items():
         if not _key.startswith("$"):
@@ -247,65 +243,141 @@ def format_generated(generated: dict[str, HSL], format: str):
     return result.strip()
 
 
+@dataclass
+class HSLFormat:
+    hue: str = "{}deg"
+    saturation: str = "{}%"
+    lightness: str = "{}%"
+    hsl: str = "hsl({h}, {s}, {l})"
+    round: bool = True
+
+    def format_value(self, value: float | int) -> float | int:
+        return round(value) if self.round else value
+
+    def format_full(self, hsl: HSL):
+        format_value = self.format_value
+        return self.hsl.format(
+            h=self.hue.format(format_value(hsl.hue)),
+            s=self.saturation.format(format_value(hsl.saturation)),
+            l=self.lightness.format(format_value(hsl.lightness))
+        )
+
+    def format_hsl(self, value: dict[str, str] | list[str]):
+        if isinstance(value, dict):
+            return self.hsl.format(value, dict)
+        elif isinstance(value, list):
+            return self.hsl.format(
+                h=value[0], s=value[1], l=value[2]
+            )
+
+
 class Compiler:
     @staticmethod
-    def to_css(parsed: dict[str, dict[str, str] | str]):
-        template = ":root {\n<here>\n}\n"
-        main_vars = "--lvc-hue: 0deg;\n--lvc-sat: 0%;\n--lvc-light: 0%;\n"
+    def compile(
+        parsed: dict[str, dict[str, str] | str],
+        color_actions: dict[str, str],
+        predefined_colors: dict[str, str],
+        indexes: dict[str, int] = {"h": 0, "s": 1, "l": 2},
+        pre_conf: list[str] = [],
+        hsl_format: HSLFormat = HSLFormat(),
+        var_format: str = "{}",
+        output_var_format: str = "{key}:{value}\n",
+        template: str = "<here>"
+    ) -> str:
+        generated: dict[str, str] = predefined_colors
 
         links: dict[str, str | dict] = {}
-        generated: dict[str, str] = {}
         result: dict[str, str] = {}
         for key, value in parsed.items():
             if isinstance(value, str):
                 if value.startswith("link::"):
                     links[key] = parsed[key]
                 elif value.startswith("color::"):
-                    name = value.lstrip("color::").strip()
+                    name = value.lstrip("color::")
                     hex_color = name_to_hex(name)
-                    hsl = HSL(*hex_to_hsl(hex_color))
-                    hue = round(hsl.hue)
-                    saturation = round(hsl.saturation)
-                    lightness = round(hsl.lightness)
-                    generated[key] = (
-                        f"hsl({hue}deg, {saturation}%, {lightness}%)"
-                    )
+                    hsl = HSL.from_hex(hex_color)
+                    generated[key] = hsl_format.format_full(hsl)
             elif isinstance(value, dict):
-                colors = {
-                    "+h": "calc(var(--lvc-hue) + {}deg)",
-                    "-h": "cal(var(--lvc-hue) - {}deg)",
-                    "+s": "calc(var(--lvc-sat) + {}%)",
-                    "-s": "cal(var(--lvc-sat) - {}%)",
-                    "+l": "calc(var(--lvc-light) + {}%)",
-                    "-l": "cal(var(--lvc-light) - {}%)",
-                    "=h": "{}deg",  "=s": "{}%", "=l": "{}%",
-                }
-                indexes = {"h": 0, "s": 1, "l": 2}
-                _parsed = [
-                    "var(--lvc-hue)", "var(--lvc-sat)", "var(--lvc-light)"
-                ]
+                colors = color_actions
+                _parsed = pre_conf
                 for _key, _value in value.items():
                     prefix, _name, __value = _value[0], _key, _value[1:]
                     _parsed[indexes[_name]] = (
                         colors[f"{prefix}{_name}"].format(__value)
                     )
-                generated[key] = f"hsl({', '.join(_parsed)})"
+                generated[key] = hsl_format.format_hsl(_parsed)
 
         for key, value in links.items():
             if isinstance(value, str):
                 name = value.lstrip("link::")
-                generated[key] = f"var(--{name})"
+                generated[key] = var_format.format(name)
 
         for _key, _value in generated.items():
             if not _key.startswith("$"):
                 result[_key] = _value
 
-        output = main_vars
+        output = ""
 
         for _key, _value in generated.items():
-            output += f"--{_key}: {_value};\n"
+            output += output_var_format.format(
+                key=_key, value=_value
+            )
 
-        return template.replace("<here>", output.strip()).strip()
+        return template.replace("<here>", output)
+
+    @staticmethod
+    def to_css(parsed: dict[str, dict[str, str] | str]) -> str:
+        template = ":root {<here>\n}\n"
+        color_actions = {
+            "+h": "calc(var(--lvc-h) + {}deg)",
+            "-h": "calc(var(--lvc-h) - {}deg)",
+            "+s": "calc(var(--lvc-s) + {}%)",
+            "-s": "calc(var(--lvc-s) - {}%)",
+            "+l": "calc(var(--lvc-l) + {}%)",
+            "-l": "calc(var(--lvc-l) - {}%)",
+            "=h": "{}deg",  "=s": "{}%", "=l": "{}%",
+        }
+        predefined_colors = {
+            "lvc-h": "0deg",
+            "lvc-s": "0%",
+            "lvc-l": "0%"
+        }
+        indexes = {"h": 0, "s": 1, "l": 2}
+        pre_conf = ["var(--lvc-h)", "var(--lvc-s)", "var(--lvc-l)"]
+        var_format = "var(--{})"
+        output_var_format = "\n  --{key}: {value};"
+
+        return Compiler.compile(
+            parsed, color_actions, predefined_colors, indexes,
+            pre_conf, HSLFormat(), var_format, output_var_format,
+            template
+        )
+
+    @staticmethod
+    def to_scss(parsed: dict[str, dict[str, str] | str]) -> str:
+        color_actions = {
+            "+h": "$lvc-h + {}deg",
+            "-h": "$lvc-h - {}deg",
+            "+s": "$lvc-s + {}%",
+            "-s": "$lvc-s - {}%",
+            "+l": "$lvc-l + {}%",
+            "-l": "$lvc-l - {}%",
+            "=h": "{}deg",  "=s": "{}%", "=l": "{}%",
+        }
+        predefined_colors = {
+            "lvc-h": "0deg",
+            "lvc-s": "0%",
+            "lvc-l": "0%"
+        }
+        indexes = {"h": 0, "s": 1, "l": 2}
+        pre_conf = ["$lvc-h", "$lvc-s", "$lvc-l"]
+        var_format = "${}"
+        output_var_format = "${key}: {value};\n"
+
+        return Compiler.compile(
+            parsed, color_actions, predefined_colors, indexes,
+            pre_conf, HSLFormat(), var_format, output_var_format
+        )
 
 
 def main():
@@ -314,7 +386,7 @@ def main():
     parser.add_argument("--output", "-O", type=str, required=False)
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--hex", "-H", type=str)
-    group.add_argument("--compile", "-C", type=str, choices=["css"])
+    group.add_argument("--compile", "-C", type=str, choices=["css", "scss"])
 
     args = parser.parse_args()
 
@@ -328,7 +400,7 @@ def main():
 
     _output = ""
     if hex:
-        hsl = HSL(*hex_to_hsl(hex))
+        hsl = HSL.from_hex(hex)
         generated = generate_palette(hsl, parsed)
         _output = format_generated(generated, format)
     elif compile:
