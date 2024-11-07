@@ -1,3 +1,6 @@
+import re
+
+
 color_names = {
     "white": "#ffffff",
     "black": "#000000",
@@ -43,7 +46,13 @@ color_names = {
 }
 
 
+def is_hex_color(s: str) -> bool:
+    return bool(re.match(r'^#([0-9a-fA-F]{3}){1,2}$', s))
+
+
 def name_to_hex(color_name: str) -> str:
+    if is_hex_color(color_name):
+        return color_name
     try:
         return color_names[color_name.lower()]
     except KeyError:
