@@ -10,11 +10,16 @@ tertiary: {h: +15, s: =80, l: =58};
 on-tertiary: {h: +15, s: =80, l: =99};
 
 background-color: {s: =100, l: =97};
+background-variant: {s: =14, l: =75};
+on-background-variant: {s: =7, l: =25};
 text: black;
 
 card: {s: =100, l: =95};
-card-high: {s: =58, l: =91};
+card-hover: {s: =90, l: =93};
+card-high: {s: =65, l: =91};
 on-card: black;
+
+outline: {s: =4, l: =47};
 
 toolbar: => primary;
 on-toolbar: => on-primary;

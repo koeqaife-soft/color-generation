@@ -1,4 +1,4 @@
-$default: #f30;
+// $default: #f30;
 
 primary: {s: =96, l: =80};
 on-primary: {s: =96, l: =10};
@@ -9,12 +9,21 @@ on-secondary: {s: =90, l: =10};
 tertiary: {h: +15, s: =96, l: =80};
 on-tertiary: {h: +15, s: =96, l: =10};
 
-background-color: {s: =7, l: =15};
+background-color: {s: =14, l: =8};
+background-variant: {s: =14, l: =20};
+on-background-variant: {s: =7, l: =80};
 text: white;
 
-card: {s: =7, l: =20};
-card-high: {s: =7, l: =25};
+card: {s: =14, l: =12};
+card-hover: {s: =14, l: =13};
+card-high: {s: =14, l: =16};
 on-card: white;
+
+outline: {s: =5, l: =57};
+
+selected: {s: =20, l: =35};
+on-selected: {s: =50, l: =95};
+
 
 toolbar: => primary;
 on-toolbar: => on-primary;
