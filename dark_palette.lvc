@@ -21,10 +21,6 @@ on-card: white;
 
 outline: {s: =5, l: =57};
 
-selected: {s: =20, l: =35};
-on-selected: {s: =50, l: =95};
-
-
 toolbar: => primary;
 on-toolbar: => on-primary;
 
