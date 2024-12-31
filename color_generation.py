@@ -1,6 +1,7 @@
 import colorsys
 from copy import copy
 from dataclasses import dataclass
+import json
 from colors import name_to_hex
 import argparse
 import re
@@ -14,6 +15,7 @@ regex = {
     "match_color": re.compile(r'color::(\w+)'),
     "comments": re.compile(r'\/\/.*', re.MULTILINE),
     "brackets": re.compile(r'^\{.+\}$'),
+    "brackets_with_link": re.compile(r'^\{.+?\}(?:\s*=>[a-zA-Z0-9\-_\$]+)?$'),
     "link": re.compile(r'^=>[a-zA-Z0-9\-_\$]+$'),
     "color": re.compile(r'^[#a-zA-Z0-9]+$'),
     "template_for": re.compile(r'for\s*\((.*?)\)', re.DOTALL)
@@ -164,7 +166,15 @@ def parse_palette(
                 f"Invalid line format: '{line}'. Expected 'key: value'."
             )
 
-        if re.match(regex["brackets"], value):
+        if re.match(regex["brackets_with_link"], value):
+            if value.count("{") != value.count("}"):
+                raise ValueError(f"Unmatched curly braces in value: '{value}'")
+
+            if '=>' in value:
+                value, link = value.split("=>")
+            else:
+                link = None
+
             inner_value = value[1:-1].split(",")
             parsed_dict = {}
             for x in inner_value:
@@ -180,8 +190,8 @@ def parse_palette(
                     )
                 parsed_dict[key.strip()] = val.strip()
 
-            if value.count("{") != value.count("}"):
-                raise ValueError(f"Unmatched curly braces in value: '{value}'")
+            if link:
+                parsed_dict["link"] = link
 
             parsed[var.strip()] = parsed_dict
 
@@ -291,6 +301,13 @@ class Compiler:
                     hsl = HSL.from_hex(hex_color)
                     generated[key] = hsl_format.format_full(hsl)
             elif isinstance(value, dict):
+                if "link" in value:
+                    print(
+                        "WARNING:" +
+                        "Links isn't supported on this type of compiler! " +
+                        f"Color \"{key}\" was skipped."
+                    )
+                    continue
                 colors = copy(color_actions)
                 _parsed = copy(pre_conf)
                 for _key, _value in value.items():
@@ -372,6 +389,33 @@ class Compiler:
             pre_conf, HSLFormat(), var_format, output_var_format
         )
 
+    @staticmethod
+    def to_json(parsed: dict[str, dict[str, str] | str]) -> str:
+        generated: dict[str, str] = {}
+
+        for key, value in parsed.items():
+            if isinstance(value, str):
+                if value.startswith("link::"):
+                    generated[key] = {"link": parsed[key].lstrip("link::")}
+                elif value.startswith("color::"):
+                    name = value.lstrip("color::")
+                    hex_color = name_to_hex(name)
+                    generated[key] = {"hex": hex_color}
+            elif isinstance(value, dict):
+                to_add = {}
+                variables = ["h", "s", "l"]
+                if "link" in value:
+                    to_add["link"] = value["link"]
+                for var in variables:
+                    _value = value.get(var)
+                    if _value is None:
+                        continue
+                    action, v = _value[0], _value[1:]
+                    to_add[var] = [action, v]
+                generated[key] = to_add
+
+        return json.dumps(generated, indent=2)
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -379,7 +423,10 @@ def main():
     parser.add_argument("--output", "-O", type=str, required=False)
     group = parser.add_mutually_exclusive_group(required=False)
     group.add_argument("--hex", "-H", type=str)
-    group.add_argument("--compile", "-C", type=str, choices=["css", "scss"])
+    group.add_argument(
+        "--compile", "-C", type=str,
+        choices=["css", "scss", "json"]
+    )
 
     args = parser.parse_args()
 
