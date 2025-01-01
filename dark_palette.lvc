@@ -1,28 +1,24 @@
-// $default: #f30;
+$default: #f20;
 
 primary: {s: =96, l: =80};
-on-primary: {s: =96, l: =10};
-
 secondary: {s: =90, l: =75};
-on-secondary: {s: =90, l: =10};
-
 tertiary: {h: +15, s: =96, l: =80};
-on-tertiary: {h: +15, s: =96, l: =10};
 
-background-color: {s: =14, l: =8};
+on-primary: {l: =10} => primary;
+on-secondary: {l: =10} => secondary;
+on-tertiary: {l: =10} => tertiary;
+
+background: {s: =14, l: =8};
 background-variant: {s: =14, l: =20};
 on-background-variant: {s: =7, l: =80};
 text: white;
 
-card: {s: =14, l: =12};
-card-hover: {s: =14, l: =13};
-card-high: {s: =14, l: =16};
+card: {l: =12} => background;
+card-hover: {l: =13} => background;
+card-high: {l: =16} => background;
 on-card: white;
 
 outline: {s: =5, l: =57};
-
-toolbar: => primary;
-on-toolbar: => on-primary;
 
 >>>
 .body--dark {

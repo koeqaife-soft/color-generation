@@ -1,12 +1,11 @@
-$default: #f30;
+$default: #f20;
 
 primary: {s: =83, l: =61};
-on-primary: white;
-
 secondary: {s: =80, l: =58};
-on-secondary: white;
-
 tertiary: {h: +15, s: =80, l: =58};
+
+on-primary: white;
+on-secondary: white;
 on-tertiary: white;
 
 background-color: {s: =100, l: =97};
@@ -20,9 +19,6 @@ card-high: {s: =65, l: =91};
 on-card: black;
 
 outline: {s: =4, l: =47};
-
-toolbar: => primary;
-on-toolbar: => on-primary;
 
 >>>
 .body--light {
