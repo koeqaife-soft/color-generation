@@ -120,7 +120,11 @@ def generate_palette(color: HSL, palette: dict[str, str | dict]):
             assert isinstance(__value, str)
             links[key] = __value
             continue
-        generated[key] = generate_color(color, value)
+        if isinstance(value, dict) and "link" in value:
+            _color = generated[value["link"]]
+            generated[key] = generate_color(_color, value)
+        else:
+            generated[key] = generate_color(color, value)
 
     for key, value in links.items():
         name = value.lstrip("link::")
