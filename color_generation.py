@@ -155,13 +155,15 @@ def generate_color(hsl: HSL, params: dict | str) -> HSL:
             saturation = color_action(adjust_value, saturation, params["s"])
         if "l" in params:
             lightness = color_action(adjust_value, lightness, params["l"])
+
+        if "no-adjust" not in params.get("flags", []):
+            saturation = adjust_saturation(hue, saturation)
+
         if "luminance" in params:
             lightness = adjust_lightness(
                 hue, saturation, lightness,
                 float(params["luminance"])
             )
-
-        saturation = adjust_saturation(hue, saturation)
 
     return HSL(hue, saturation, lightness)
 
