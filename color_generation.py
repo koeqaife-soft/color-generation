@@ -2,6 +2,7 @@ import colorsys
 from copy import copy
 from dataclasses import dataclass
 import json
+import math
 from colors import name_to_hex
 import argparse
 import re
@@ -59,8 +60,56 @@ def hsl_to_hex(h: float, s: float, li: float) -> str:
     li /= 100
     r, g, b = colorsys.hls_to_rgb(h, li, s)
     return '#{:02x}{:02x}{:02x}'.format(
-        int(r * 255), int(g * 255), int(b * 255)
+        round(r * 255),
+        round(g * 255),
+        round(b * 255)
     )
+
+
+def hsl_to_rgb(
+    h: float, s: float, li: float
+) -> tuple[float, float, float]:
+    h /= 360
+    s /= 100
+    li /= 100
+    r, g, b = colorsys.hls_to_rgb(h, li, s)
+    return r * 255, g * 255, b * 255
+
+
+def adjust_lightness(
+    h: float,
+    s: float,
+    li: float,
+    target_luminance: float = 50
+) -> float:
+    r, g, b = hsl_to_rgb(h, s, li)
+    print(r, g, b)
+
+    Y = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255
+
+    if Y == 0:
+        return li
+
+    correction_factor = math.log1p(target_luminance) / math.log1p(Y * 100)
+    new_l = li * correction_factor
+
+    return max(0, min(100, new_l))
+
+
+def adjust_saturation(h: float, s: float) -> float:
+    factor = 1
+
+    if 90 <= h <= 150:
+        if h <= 120:
+            factor = 1 - ((h - 90) / 30) * 0.2
+        else:
+            factor = 0.8 + ((h - 120) / 30) * 0.2
+    elif 180 <= h <= 300:
+        k = 0.140625
+        factor = 1 + k * math.sin(((h - 180) * math.pi) / 120)
+
+    new_s = s * factor
+    return min(100, new_s)
 
 
 def adjust_value(value: float, delta: float) -> float:
@@ -106,6 +155,13 @@ def generate_color(hsl: HSL, params: dict | str) -> HSL:
             saturation = color_action(adjust_value, saturation, params["s"])
         if "l" in params:
             lightness = color_action(adjust_value, lightness, params["l"])
+        if "luminance" in params:
+            lightness = adjust_lightness(
+                hue, saturation, lightness,
+                float(params["luminance"])
+            )
+
+        saturation = adjust_saturation(hue, saturation)
 
     return HSL(hue, saturation, lightness)
 
@@ -192,7 +248,13 @@ def parse_palette(
                     raise ValueError(
                         f"The value '{val[1:]}' must be a number."
                     )
-                parsed_dict[key.strip()] = val.strip()
+                if key == "lum":
+                    parsed_dict["luminance"] = val.strip()[1:]
+                elif key == "no-adjust" and val.strip() == "!1":
+                    parsed_dict["flags"] = parsed_dict.get("flags", [])
+                    parsed_dict["flags"].append("no-adjust")
+                else:
+                    parsed_dict[key.strip()] = val.strip()
 
             if link:
                 parsed_dict["link"] = link
@@ -240,7 +302,7 @@ def format_generated(generated: dict[str, HSL], format: str):
                 hsl=value.str(),
                 hsl_css=hsl_css,
                 hex=hex,
-                strip_hex=hex.strip(),
+                strip_hex=hex.strip().strip("#"),
                 newline="\n" if i < len(items) - 1 else "",
                 **generate_whitespaces()
             )
@@ -291,11 +353,15 @@ class Compiler:
         output_var_format: str = "{key}:{value}\n",
         template: str = "<here>"
     ) -> str:
+        print("DEPRECATED:use generator or json instead")
         generated: dict[str, str] = predefined_colors
 
         links: dict[str, str | dict] = {}
         result: dict[str, str] = {}
         for key, value in parsed.items():
+            if key.startswith("$"):
+                key = key.replace("$", "lvc-", 1)
+
             if isinstance(value, str):
                 if value.startswith("link::"):
                     links[key] = parsed[key]
@@ -308,8 +374,15 @@ class Compiler:
                 if "link" in value:
                     print(
                         "WARNING:" +
-                        "Links isn't supported on this type of compiler! " +
-                        f"Color \"{key}\" was skipped."
+                        "Links isn't supported on this type of compiler!" +
+                        f" Color \"{key}\" was skipped."
+                    )
+                    continue
+                if "luminance" in value:
+                    print(
+                        "WARNING:" +
+                        "Luminance isn't supported on this type of compiler!" +
+                        f" Color \"{key}\" was skipped."
                     )
                     continue
                 colors = copy(color_actions)
@@ -324,11 +397,12 @@ class Compiler:
         for key, value in links.items():
             if isinstance(value, str):
                 name = value.lstrip("link::")
+                if name.startswith("$"):
+                    name = name.replace("$", "lvc-", 1)
                 generated[key] = var_format.format(name)
 
         for _key, _value in generated.items():
-            if not _key.startswith("$"):
-                result[_key] = _value
+            result[_key] = _value
 
         output = ""
 
@@ -410,6 +484,10 @@ class Compiler:
                 variables = ["h", "s", "l"]
                 if "link" in value:
                     to_add["link"] = value["link"]
+                if "luminance" in value:
+                    to_add["luminance"] = value["luminance"]
+                if "flags" in value:
+                    to_add["flags"] = value["flags"]
                 for var in variables:
                     _value = value.get(var)
                     if _value is None:

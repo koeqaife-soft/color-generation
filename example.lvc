@@ -1,0 +1,52 @@
+// Description: Example of using the lvc preprocessor
+// Lvc means LinkVerse Colors
+
+// Default color (will be used if the color is not defined)
+// The default color is optional
+$default: #f20;
+
+// h means hue
+// s means saturation
+// l means lightness
+// lum means luminance
+// to adjust values, use +, =, or - before the value
+// Example: {s: +10} means increase the saturation by 10
+// {s: =10} means set the saturation to 10
+// {s: -10} means decrease the saturation by 10
+
+// => means the color will be based on another color (basically link)
+
+// Files dark_palette.lvc and light_palette.lvc is used in SharinFlame (if it's private it's WIP)
+
+// Colors won't be used in the final file
+$first: {h: +4, s: =70, l: =68, lum: !100};
+$on-first: {l: =70, lum: !0.5} => $first;
+
+// Colors will be used in the final file
+primary: => $first;
+on-primary: => $on-first;
+
+// no-adjust means the color saturation won't be adjusted
+not-adjusted: {s: =70, l: =68, lum: !100, no-adjust: !1};
+
+primary-container: {s: =30, l: =30, lum: !100} => $first;
+on-primary-container: {l: =90, lum: !90} => primary-container;
+
+background: {s: =14, l: =8, lum: !80, no-adjust: !1};
+on-background: white;
+
+// Format final file (not JSON)
+// i2 means indent 2 spaces (available i1-8)
+// key means the key of the color
+// hex means the hex value of the color
+// newline means a new line
+// You can use: hex, strip_hex, hsl, hsl_css, newline, i1 to i8, key.
+
+// Try "python color_generation.py -F example.lvc -O example.css"
+// To check it out
+>>>
+:root {
+for(
+{i2}--{key}: {strip_hex};{newline}
+)
+}
