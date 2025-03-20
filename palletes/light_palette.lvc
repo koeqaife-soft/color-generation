@@ -1,23 +1,23 @@
-primary: {s: =70, l: =30, lum: !15};
-secondary: {s: =70, l: =25, lum: !10};
-tertiary: {h: -40, s: =75, l: =30, lum: !15};
+primary: {s: =55, l: =35, lum: !30};
+secondary: {s: =25, l: =40, lum: !30};
+tertiary: {h: -40, s: =55, l: =35, lum: !30};
 
 on-primary: white;
 on-secondary: white;
 on-tertiary: white;
 
-background: {s: =100, l: =97, lum: !97};
-background-variant: {s: =14, l: =95, lum: !85};
-on-background-variant: {s: =7, l: =30, lum: !20};
+background: {s: =80, l: =98, lum: !97};
+background-variant: {s: =50, l: =95, lum: !85};
+on-background-variant: {s: =20, l: =30, lum: !20};
 
-text: black;
+on-background: black;
 
-card: {s: =100, l: =95, lum: !97};
-card-hover: {s: =90, l: =93, lum: !93};
-card-high: {s: =65, l: =91, lum: !95};
+card: {s: =80, l: =96, lum: !97};
+card-hover: {s: =80, l: =93, lum: !93};
+card-high: {s: =50, l: =92, lum: !95};
 on-card: black;
 
-outline: {s: =4, l: =50, lum: !50};
+outline: {s: =10, l: =50, lum: !50};
 >>>
 .body--light {
 for(
