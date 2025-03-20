@@ -9,7 +9,8 @@ on-tertiary: {l: =70, lum: !0.5} => tertiary;
 background: {s: =14, l: =6, lum: !7};
 background-variant: {s: =10, l: =17, lum: !17};
 on-background-variant: {s: =20, l: =85, lum: !50};
-text: white;
+
+on-background: white;
 
 card: {l: =9, lum: !10} => background;
 card-hover: {l: =9, lum: !12} => background;
