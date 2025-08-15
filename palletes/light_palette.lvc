@@ -1,6 +1,6 @@
-primary: {s: =55, l: =35, lum: !30};
-secondary: {s: =25, l: =40, lum: !30};
-tertiary: {h: -40, s: =55, l: =35, lum: !30};
+primary: {s: =65, l: =35, lum: !30};
+secondary: {s: =20, l: =40, lum: !30};
+tertiary: {h: -80, s: =45, l: =35, lum: !30};
 
 on-primary: white;
 on-secondary: white;
@@ -13,11 +13,16 @@ on-background-variant: {s: =20, l: =30, lum: !20};
 on-background: black;
 
 card: {s: =80, l: =96, lum: !97};
-card-hover: {s: =80, l: =93, lum: !93};
 card-high: {s: =50, l: =92, lum: !95};
+card-secondary: {s: =70, l: =90, lum: !80};
+on-card-secondary: {s: =40, l: =25, lum: !40};
 on-card: black;
 
 outline: {s: =10, l: =50, lum: !50};
+
+attention: {h: =0, s: =65, l: =35, lum: !30};
+on-attention: white;
+
 >>>
 .body--light {
 for(
