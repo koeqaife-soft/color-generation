@@ -2,7 +2,6 @@ import colorsys
 from copy import copy
 from dataclasses import dataclass
 import json
-import math
 from colors import name_to_hex
 import argparse
 import re
@@ -83,31 +82,41 @@ def adjust_lightness(
     target_luminance: float = 50
 ) -> float:
     r, g, b = hsl_to_rgb(h, s, li)
-    print(r, g, b)
-
     Y = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255
 
     if Y == 0:
         return li
 
-    correction_factor = math.log1p(target_luminance) / math.log1p(Y * 100)
+    correction_factor = target_luminance / (Y * 100)
     new_l = li * correction_factor
-
     return max(0, min(100, new_l))
 
 
+def hue_saturation_correction(hue: float) -> float:
+    h = (hue % 360 + 360) % 360
+    points: list[tuple[float, float]] = [
+        (0, 1),
+        (40, 0.6),
+        (90, 0.7),
+        (180, 0.5),
+        (250, 0.7),
+        (320, 0.85),
+        (360, 1)
+    ]
+
+    for i in range(len(points) - 1):
+        h1, f1 = points[i]
+        h2, f2 = points[i + 1]
+
+        if h1 <= h <= h2:
+            t = (h - h1) / (h2 - h1)
+            return f1 + (f2 - f1) * t
+
+    return 1
+
+
 def adjust_saturation(h: float, s: float) -> float:
-    factor = 1
-
-    if 90 <= h <= 150:
-        if h <= 120:
-            factor = 1 - ((h - 90) / 30) * 0.2
-        else:
-            factor = 0.8 + ((h - 120) / 30) * 0.2
-    elif 180 <= h <= 300:
-        k = 0.140625
-        factor = 1 + k * math.sin(((h - 180) * math.pi) / 120)
-
+    factor = hue_saturation_correction(h)
     new_s = s * factor
     return min(100, new_s)
 

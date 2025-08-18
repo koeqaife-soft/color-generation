@@ -1,26 +1,26 @@
-primary: {s: =65, l: =35, lum: !30};
-secondary: {s: =20, l: =40, lum: !30};
-tertiary: {h: -80, s: =45, l: =35, lum: !30};
+primary: {s: =40, l: =35, lum: !35};
+secondary: {s: =20, l: =35, lum: !35};
+tertiary: {h: -80, s: =40, l: =35, lum: !35};
 
 on-primary: white;
 on-secondary: white;
 on-tertiary: white;
 
-background: {s: =80, l: =98, lum: !97};
-background-variant: {s: =50, l: =95, lum: !85};
-on-background-variant: {s: =20, l: =30, lum: !20};
+background: {s: =90, l: =97, lum: !97};
+background-variant: {s: =40, l: =95, lum: !85};
+on-background-variant: {s: =35, l: =30, lum: !30};
 
-on-background: black;
+on-background: {s: =50, l: =15, lum: !15};
 
-card: {s: =80, l: =96, lum: !97};
-card-high: {s: =50, l: =92, lum: !95};
-card-secondary: {s: =70, l: =90, lum: !80};
-on-card-secondary: {s: =40, l: =25, lum: !40};
-on-card: black;
+card: {s: =70, l: =96, lum: !95};
+card-high: {s: =30, l: =90, lum: !90};
+card-secondary: {s: =70, l: =90, lum: !85};
+on-card-secondary: {s: =40, l: =25, lum: !25};
+on-card: => on-background;
 
 outline: {s: =10, l: =50, lum: !50};
 
-attention: {h: =0, s: =65, l: =35, lum: !30};
+attention: {h: =0, s: =100, l: =36};
 on-attention: white;
 
 >>>

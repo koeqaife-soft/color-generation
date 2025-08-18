@@ -1,27 +1,27 @@
-primary: {s: =60, l: =68, lum: !100};
-secondary: {s: =30, l: =84, lum: !65};
-tertiary: {h: -80, s: =65, l: =70, lum: !85};
+primary: {s: =70, l: =85, lum: !73};
+secondary: {s: =40, l: =80, lum: !73};
+tertiary: {h: -80, s: =50, l: =75, lum: !70};
 
-on-primary: {l: =70, lum: !0.5} => primary;
-on-secondary: {l: =70, lum: !0.5} => secondary;
-on-tertiary: {l: =70, lum: !0.5} => tertiary;
+on-primary: {l: =10, lum: !10} => primary;
+on-secondary: {l: =10, lum: !10} => secondary;
+on-tertiary: {l: =10, lum: !10} => tertiary;
 
-background: {s: =14, l: =6, lum: !7};
-background-variant: {s: =20, l: =85, lum: !50};
-on-background-variant: {s: =20, l: =85, lum: !50};
+background: {s: =16, l: =6, lum: !7};
+background-variant: {s: =10, l: =17, lum: !17};
+on-background-variant: {s: =25, l: =90, lum: !80};
 
-on-background: white;
+on-background: {s: =50, l: =95, lum: !95};
 
 card: {l: =9, lum: !10} => background;
 card-high: {l: =13, lum: !15} => background;
-card-secondary: {s: =20, l: =25, lum: !55};
-on-card-secondary: {s: =35; l: =93, lum: !80};
+card-secondary: {s: =20, l: =25, lum: !30};
+on-card-secondary: {s: =35, l: =93, lum: !85};
 on-card: white;
 
 outline: {s: =15, l: =60, lum: !60};
 
-attention: {h: =0, s: =60, l: =68};
-on-attention: {h: =0, l: =70, lum: !0.5} => attention;
+attention: {h: =0, s: =100, l: =68};
+on-attention: {h: =0, l: =10} => attention;
 
 >>>
 .body--dark {
